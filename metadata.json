@@ -1,0 +1,11 @@
+{
+  "name": "Remix Remix mooo",
+  "description": "Imported from GitHub: abobode40-netizen/mooo",
+  "requestFramePermissions": [
+    "microphone",
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
