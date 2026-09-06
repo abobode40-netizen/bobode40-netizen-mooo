@@ -9,16 +9,11 @@ import {
   Flame,
   Sparkles,
   Layers,
-  BookOpen,
-  Volume2,
-  VolumeX
+  BookOpen
 } from 'lucide-react';
 import { ATHKAR_CATEGORIES } from '../data/athkarData';
 import { toArabicNumerals } from '../data/quranData';
 import { playChime, triggerHaptic } from '../utils/audio';
-import { speakArabicText, stopSpeech } from '../utils/speech';
-import { useAudioPlayer } from '../contexts/AudioPlayerContext';
-import { createThikrAudioTrack, getThikrTitle } from '../utils/athkarAudio';
 import { HisnMuslimAccordion } from './HisnMuslimAccordion';
 
 interface AthkarViewProps {
@@ -34,9 +29,6 @@ export const AthkarView: React.FC<AthkarViewProps> = ({ onThikrCompleted, onOpen
   const [athkarProgress, setAthkarProgress] = useState<Record<string, number>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  // Global Audio Player
-  const { currentTrack, isPlaying: isGlobalAudioPlaying, playTrack } = useAudioPlayer();
 
   const activeCategory = ATHKAR_CATEGORIES.find((c) => c.id === selectedCategory) || ATHKAR_CATEGORIES[0];
 
@@ -95,14 +87,6 @@ export const AthkarView: React.FC<AthkarViewProps> = ({ onThikrCompleted, onOpen
       navigator.clipboard.writeText(shareText);
       showToast('تم نسخ الذكر للمشاركة');
     }
-  };
-
-  const handlePlayThikrAudio = (thikr: ThikrItem) => {
-    const track = createThikrAudioTrack(thikr, activeCategory.title);
-    playTrack(track);
-    playChime('click');
-    triggerHaptic(20);
-    showToast(`يتم الآن تشغيل: ${track.title} في المشغل العام`);
   };
 
   const showToast = (msg: string) => {
@@ -278,8 +262,6 @@ export const AthkarView: React.FC<AthkarViewProps> = ({ onThikrCompleted, onOpen
             {itemsToDisplay.map((thikr) => {
               const currentCount = athkarProgress[thikr.id] || 0;
               const isDone = currentCount >= thikr.repeatCount;
-              const isCurrentPlaying = isGlobalAudioPlaying && currentTrack?.id === `thikr-${thikr.id}`;
-              const isCurrentActive = currentTrack?.id === `thikr-${thikr.id}`;
 
               return (
                 <div
@@ -295,20 +277,6 @@ export const AthkarView: React.FC<AthkarViewProps> = ({ onThikrCompleted, onOpen
                   <div className="flex items-center justify-between text-xs pb-2 border-b border-gray-100 dark:border-gray-800">
                     {/* Actions */}
                     <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handlePlayThikrAudio(thikr)}
-                        className={`px-2 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                          isCurrentPlaying
-                            ? 'bg-amber-400 text-black border-amber-300 shadow-xs animate-pulse'
-                            : isCurrentActive
-                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-[#0F6B50] dark:text-[#2DD4BF] border-emerald-300'
-                            : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-[#0F6B50]'
-                        }`}
-                        title={isCurrentPlaying ? 'إيقاف التلاوة مؤقتاً بالمشغل العام' : 'استماع لتلاوة الذكر بالمشغل العام'}
-                      >
-                        {isCurrentPlaying ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                        <span className="text-[11px] font-medium">{isCurrentPlaying ? 'جاري الاستماع' : 'استماع'}</span>
-                      </button>
                       <button
                         onClick={() => handleCopy(thikr.text, thikr.id)}
                         className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-[#0F6B50] transition-colors cursor-pointer"

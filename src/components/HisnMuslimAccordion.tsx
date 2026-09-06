@@ -17,8 +17,6 @@ import {
   BookOpen,
   Copy,
   Share2,
-  Volume2,
-  VolumeX,
   Check,
   RotateCcw,
   Search,
@@ -32,9 +30,6 @@ import { ATHKAR_CATEGORIES } from '../data/athkarData';
 import { toArabicNumerals } from '../data/quranData';
 import { AthkarCategory, ThikrItem } from '../types';
 import { playChime, triggerHaptic } from '../utils/audio';
-import { speakArabicText, stopSpeech } from '../utils/speech';
-import { useAudioPlayer } from '../contexts/AudioPlayerContext';
-import { createThikrAudioTrack } from '../utils/athkarAudio';
 
 interface HisnMuslimAccordionProps {
   athkarProgress: Record<string, number>;
@@ -62,17 +57,6 @@ export const HisnMuslimAccordion: React.FC<HisnMuslimAccordionProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilterCategory, setActiveFilterCategory] = useState<string>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  // Global Audio Player
-  const { currentTrack, isPlaying: isGlobalAudioPlaying, playTrack } = useAudioPlayer();
-
-  const handlePlayThikrAudio = (thikr: ThikrItem, categoryTitle: string) => {
-    const track = createThikrAudioTrack(thikr, categoryTitle);
-    playTrack(track);
-    playChime('click');
-    triggerHaptic(20);
-    showToast(`يتم الآن تشغيل: ${track.title} في المشغل العام`);
-  };
 
   // Toggle category accordion
   const toggleCategory = (categoryId: string) => {
@@ -435,8 +419,6 @@ export const HisnMuslimAccordion: React.FC<HisnMuslimAccordionProps> = ({
                     {matchedItems.map((thikr, idx) => {
                       const currentCount = athkarProgress[thikr.id] || 0;
                       const isDone = currentCount >= thikr.repeatCount;
-                      const isCurrentPlaying = isGlobalAudioPlaying && currentTrack?.id === `thikr-${thikr.id}`;
-                      const isCurrentActive = currentTrack?.id === `thikr-${thikr.id}`;
 
                       return (
                         <div
@@ -449,23 +431,8 @@ export const HisnMuslimAccordion: React.FC<HisnMuslimAccordionProps> = ({
                         >
                           {/* Item Meta & Actions Header */}
                           <div className="flex items-center justify-between text-xs pb-1.5 border-b border-gray-200/60 dark:border-gray-800">
-                            {/* Action Buttons: Audio, Copy, Share */}
+                            {/* Action Buttons: Copy, Share */}
                             <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => handlePlayThikrAudio(thikr, category.title)}
-                                className={`px-2 py-1 rounded-lg border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                                  isCurrentPlaying
-                                    ? 'bg-amber-400 text-black border-amber-300 shadow-xs animate-pulse'
-                                    : isCurrentActive
-                                    ? 'bg-emerald-100 dark:bg-emerald-950/60 text-[#0F6B50] dark:text-[#2DD4BF] border-emerald-300'
-                                    : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-[#0F6B50]'
-                                }`}
-                                title={isCurrentPlaying ? 'إيقاف التلاوة مؤقتاً بالمشغل العام' : 'استماع لتلاوة الذكر بالمشغل العام'}
-                              >
-                                {isCurrentPlaying ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                                <span className="text-[11px] font-medium">{isCurrentPlaying ? 'جاري الاستماع' : 'استماع'}</span>
-                              </button>
-
                               <button
                                 onClick={() => handleCopy(thikr.text, thikr.id)}
                                 className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-[#0F6B50] transition-colors cursor-pointer"
