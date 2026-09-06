@@ -5,7 +5,9 @@ export interface AudioTrack {
   title: string;
   subtitle: string;
   url: string;
+  urls?: string[];
   imageUrl?: string;
+  rawText?: string;
 }
 
 interface AudioPlayerContextType {
@@ -35,6 +37,8 @@ export const AudioPlayerProvider: React.FC<{children: React.ReactNode}> = ({ chi
   const [isLoading, setIsLoading] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentTrackRef = useRef<AudioTrack | null>(null);
+  const currentChunkIndexRef = useRef<number>(0);
 
   useEffect(() => {
     const audio = new Audio();
@@ -42,7 +46,23 @@ export const AudioPlayerProvider: React.FC<{children: React.ReactNode}> = ({ chi
 
     const updateTime = () => setCurrentTime(audio.currentTime);
     const updateDuration = () => setDuration(audio.duration);
-    const onEnded = () => setIsPlaying(false);
+    const onEnded = () => {
+      // Advance to next chunk if multi-chunk track
+      const track = currentTrackRef.current;
+      if (track?.urls && currentChunkIndexRef.current < track.urls.length - 1) {
+        currentChunkIndexRef.current += 1;
+        const nextUrl = track.urls[currentChunkIndexRef.current];
+        audio.src = nextUrl;
+        audio.currentTime = 0;
+        audio.playbackRate = playbackSpeed;
+        audio.play().catch(err => {
+          console.warn('Next chunk playback failed', err);
+          setIsPlaying(false);
+        });
+      } else {
+        setIsPlaying(false);
+      }
+    };
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     const onWaiting = () => setIsLoading(true);
@@ -79,29 +99,37 @@ export const AudioPlayerProvider: React.FC<{children: React.ReactNode}> = ({ chi
       audio.pause();
       audio.src = '';
     };
-  }, []);
+  }, [playbackSpeed]);
 
   const playTrack = (track: AudioTrack) => {
     if (audioRef.current) {
-      if (currentTrack?.id === track.id && isPlaying) {
-        audioRef.current.pause();
+      if (currentTrack?.id === track.id) {
+        if (isPlaying) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+        } else {
+          audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+        }
         return;
       }
-      if (currentTrack?.id !== track.id) {
-        setCurrentTrack(track);
-        audioRef.current.src = track.url;
-        audioRef.current.currentTime = 0;
-        
-        if ('mediaSession' in navigator) {
-          navigator.mediaSession.metadata = new MediaMetadata({
-            title: track.title,
-            artist: track.subtitle,
-            album: 'جنّة الرحمن',
-            artwork: [
-              { src: track.imageUrl || '/jannat-icon.png', sizes: '512x512', type: 'image/png' }
-            ]
-          });
-        }
+
+      currentTrackRef.current = track;
+      currentChunkIndexRef.current = 0;
+      setCurrentTrack(track);
+
+      const initialUrl = (track.urls && track.urls.length > 0) ? track.urls[0] : track.url;
+      audioRef.current.src = initialUrl;
+      audioRef.current.currentTime = 0;
+      
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.title,
+          artist: track.subtitle,
+          album: 'جنّة الرحمن',
+          artwork: [
+            { src: track.imageUrl || '/jannat-icon.svg', sizes: '512x512', type: 'image/svg+xml' }
+          ]
+        });
       }
       
       setIsLoading(true);
@@ -121,13 +149,20 @@ export const AudioPlayerProvider: React.FC<{children: React.ReactNode}> = ({ chi
 
   const pause = () => {
     audioRef.current?.pause();
+    setIsPlaying(false);
   };
 
   const resume = () => {
-    audioRef.current?.play();
+    if (audioRef.current && currentTrack) {
+      audioRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => setIsPlaying(false));
+    }
   };
 
   const stop = () => {
+    currentTrackRef.current = null;
+    currentChunkIndexRef.current = 0;
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
